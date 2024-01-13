@@ -15,9 +15,8 @@ import java.util.regex.Pattern;
 public class prepare {
 
 	public static void main(String[] args) {
-        String inputFilePath = "test1.c";
-        String outputFilePath = "test1O.c";
-        Parser parser = new Parser(inputFilePath, outputFilePath);
+        String inputFilePath = "test1O2.c";
+        Parser parser = new Parser(inputFilePath);
         
         	
 		}
