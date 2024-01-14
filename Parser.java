@@ -19,11 +19,12 @@ public class Parser {
 
     public Parser() {
         stack.push("$");
-        stack.push("E"); // Assuming 'E' is the start symbol
+        stack.push("E");
     }
 
     public void receiveToken(String token) {
         currentToken = token;
+        System.out.print("TOKEN is ");
         System.out.println(token);
         processToken();
     }
@@ -122,19 +123,19 @@ public class Parser {
     private void pushRule(String rule) {
         // Splitting the rule into its components.
         // Assuming that each symbol in the rule is separated by a space.
-        String[] symbols = rule.split(" ");
+    	System.out.print("RULE is ");
+    	System.out.println(rule);
         
-        for (int i = symbols.length - 1; i >= 0; i--) {
-            if (!symbols[i].equals("")) { // Ensuring not to push empty strings.
-                stack.push(symbols[i]);
-                for(int j=rule.length()-1;i>=0;i--)
+
+                for(int j=rule.length()-1;j>=0;j--)
                 {
-                  char ch=rule.charAt(i);
+                  char ch=rule.charAt(j);
                   String str=String.valueOf(ch);
+                  System.out.print("Pushed to stack ");
+                  System.out.println(str);
                   stack.push(str);
                 }
-            }
-        }
+
     }
 
 

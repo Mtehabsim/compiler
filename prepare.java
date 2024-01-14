@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
 public class prepare {
 
 	public static void main(String[] args) {
-        String inputFilePath = "test1.c";
+        String inputFilePath = "test1O2.c";
         Parser parser = new Parser();
         Lexical lexical = new Lexical(inputFilePath, parser);
         
