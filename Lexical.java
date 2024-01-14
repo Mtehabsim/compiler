@@ -2,22 +2,20 @@ package compiler;
 
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Lexical {
-    int current = -1;
     HashMap<String, String> identifierTable;
     Set<String> preservedKeys = new HashSet<>();
-    List<String> tokens = new ArrayList<>();
+    Parser parser;
 
-    public Lexical(String inputFilePath) {
+    public Lexical(String inputFilePath, Parser parser) {
+        this.parser = parser;
         try {
             String fileContent = removeComments(inputFilePath);
             identifierTable = new HashMap<>();
@@ -28,11 +26,11 @@ public class Lexical {
             preservedKeys.add(";");
             preservedKeys.add("\\)");
 
-            StringTokenizer tokenizer = new StringTokenizer(fileContent, " \t\n\r\f", true); // Tokenize with delimiters
+            StringTokenizer tokenizer = new StringTokenizer(fileContent, " \t\n\r\f", true);
 
             while (tokenizer.hasMoreTokens()) {
                 String token = tokenizer.nextToken();
-                if (token.trim().isEmpty()) continue; // Skip whitespace tokens
+                if (token.trim().isEmpty()) continue;
 
                 String secondToken = tokenizer.hasMoreTokens() ? tokenizer.nextToken() : "";
                 if (secondToken.trim().isEmpty()) {
@@ -41,7 +39,7 @@ public class Lexical {
 
                 String compoundToken = processCompoundToken(token, secondToken);
                 if (compoundToken != null) {
-                    tokens.add(compoundToken);
+                    parser.receiveToken(compoundToken);
                     continue;
                 }
 
@@ -56,6 +54,7 @@ public class Lexical {
             System.err.println("An error occurred: " + e.getMessage());
         }
     }
+
 
     private static String removeComments(String inputFilePath) throws IOException {
         StringBuilder outputContent = new StringBuilder();
@@ -97,45 +96,57 @@ public class Lexical {
         return outputContent.toString();
     }
 
-    private void processIndividualToken(String token) {
-        processIdentifier(token, identifierTable, preservedKeys);
-        processNumbersDigits(token, identifierTable);
-        processDelimiters(token);
+    private boolean processIndividualToken(String token) {
+        if (processIdentifier(token)) {
+            parser.receiveToken("i"); // Pass "i" for identifiers
+            return true;
+        } else if (processNumbersDigits(token)) {
+            parser.receiveToken(token); // Pass the token as is for numbers
+            return true;
+        } else if (processDelimiters(token)) {
+            parser.receiveToken(token); // Pass the token as is for delimiters
+            return true;
+        }
+        return false;
     }
 
-    private void processIdentifier(String input, HashMap<String, String> identifierTable, Set<String> preservedKeys) {
+
+    private boolean processIdentifier(String input) {
         String identifierRegex = "\\b[a-zA-Z][a-zA-Z0-9]*\\b";
         Pattern pattern = Pattern.compile(identifierRegex);
         Matcher matcher = pattern.matcher(input);
 
+        boolean found = false;
         while (matcher.find()) {
             String identifier = matcher.group();
             if (!identifierTable.containsKey(identifier) && !preservedKeys.contains(identifier)) {
                 identifierTable.put(identifier, "identifier");
-                tokens.add(identifier);
+                found = true;
             }
         }
+        return found;
     }
 
-    private void processNumbersDigits(String input, HashMap<String, String> identifierTable) {
+    private boolean processNumbersDigits(String input) {
         String numRegex = "\\b\\d+(\\.\\d+)?(E[+-]?\\d+)?\\b";
         Pattern pattern = Pattern.compile(numRegex);
         Matcher matcher = pattern.matcher(input);
 
         if (matcher.find()) {
             identifierTable.put(matcher.group(), "number");
-            tokens.add(matcher.group());
+            return true;
         }
+        return false;
     }
 
-    private void processDelimiters(String input) {
+    private boolean processDelimiters(String input) {
         String[] delimiters = {"\"", ";", "-", "+", "/", "<", "=", ">", "<=", ">="};
-
         for (String delimiter : delimiters) {
             if (input.contains(delimiter)) {
-                tokens.add(delimiter);
+                return true;
             }
         }
+        return false;
     }
 
     private String processCompoundToken(String token, String nextToken) {
@@ -145,7 +156,7 @@ public class Lexical {
             return "<=";
         }
         // Add more conditions for other compound tokens if needed
-        return null; // Return null if it's not a compound token
+        return null;
     }
 
     public void printSymbolTable() {
@@ -156,14 +167,5 @@ public class Lexical {
         }
     }
 
-  public String getToken() {
-    	
-    	this.current += 1;
-    	if (this.current < this.tokens.size()) {
-    		return this.tokens.get(this.current);
-    	}
-    	else {
-			return "No";
-		}
-    }
 }
+
