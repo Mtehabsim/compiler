@@ -1,18 +1,30 @@
 package compiler;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Stack;
 
 public class Parser {
     private Stack<String> stack = new Stack<>();
+//    E  -> TE'
+//    E' -> +TE' | -TE' | none
+//    T  -> FT'
+//    T' -> *FT' | /FT' | %FT' | none
+//    F  -> ++F | --F | +F | -F | P
+//    P  -> id | (E)
+    private List<String> errorMessages = new ArrayList<>();
+
     private String[][] table = {
-            {"TA","TA",null,null,null,null,null,null},
-            {null,null,"","+TB","-TB",null,null,""}  ,
-            {"FB","FB",null,null,null,null,null,null}  ,
-            {null,null,"","","","*FB","/FB",""}  ,
-            {"i","(E)",null,null,null,null,null,null}  ,
-        };
-    private String[] nonTerminals = {"E", "A", "T", "B", "F"};
-    private String[] terminals = {"i", "(", ")", "+", "-", "*", "/", "$"};
+    	    {"TA", "TA", "TA", "TA", "TA", null, null, null, "TA", null, null},
+    	    {null, "+TA", "-TA", null, null, null, null, null,null, "", ""},
+    	    {"FB", "FB", "FB", "FB", "FB", null, null, null, "FB", null, null},
+    	    {null, "", "", null, null, "*FB", "/FB", "%FB",null, "", ""},
+    	    {"P", "+F", "-F", "++F", "--F", null, null, null, "P", null, null},
+    	    {"i", null, null, null, null, null, null, null, "(E)", null, null}
+    	};
+    	private String[] nonTerminals = {"E", "A", "T", "B", "F", "P"};
+    	private String[] terminals = {"i", "+", "-", "++", "--", "*", "/", "%","(", ")", "$"};
+
 
     private String currentToken;
     private boolean endOfInputFlag = false;
@@ -90,7 +102,10 @@ public class Parser {
     private String getRule(String non, String term) {
         int row = getNonTerminalIndex(non);
         int column = getTerminalIndex(term);
-
+        System.out.print(" Index is ");
+        System.out.print(row);
+        System.out.println(" ");
+        System.out.print(column);
         if (row == -1 || column == -1) {
             return null; // Invalid non-terminal or terminal
         }
@@ -140,7 +155,18 @@ public class Parser {
 
 
     private void error(String message) {
-        System.out.println(message);
-        throw new RuntimeException(message);
+//        System.out.println(message);
+        errorMessages.add(message);
+    }
+    
+    public void reportErrors() {
+        if (errorMessages.isEmpty()) {
+            System.out.println("File Compiled Successfully.");
+        } else {
+            System.out.println("Syntax errors found:");
+            for (String errorMsg : errorMessages) {
+                System.out.println(errorMsg);
+            }
+        }
     }
 }

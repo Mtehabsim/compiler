@@ -17,7 +17,9 @@ public class Lexical {
     public Lexical(String inputFilePath, Parser parser) {
         this.parser = parser;
         try {
+        	
             String fileContent = removeComments(inputFilePath);
+            System.out.println(fileContent);
             identifierTable = new HashMap<>();
             preservedKeys.add("int");
             preservedKeys.add("float");
@@ -46,6 +48,7 @@ public class Lexical {
                 }
             }
             parser.receiveToken("$");
+            parser.reportErrors();
             printSymbolTable();
         } catch (IOException e) {
             System.err.println("An error occurred: " + e.getMessage());
@@ -57,6 +60,7 @@ public class Lexical {
         StringBuilder outputContent = new StringBuilder();
         try (FileInputStream inputFileStream = new FileInputStream(inputFilePath)) {
             boolean inSingleLineComment = false;
+            boolean wasMultiLine = false;
             boolean inMultiLineComment = false;
             boolean inStringLiteral = false;
             int lineNumber = 1;
@@ -71,6 +75,10 @@ public class Lexical {
                         throw new IOException("Unexpected end of line in string literal at line " + lineNumber);
                     }
                     inSingleLineComment = false;
+                    if(inMultiLineComment) {
+                        System.out.println(outputContent);
+                        System.out.println(outputContent.length());
+                    }
                 }
 
                 
@@ -78,6 +86,7 @@ public class Lexical {
                 if (!inSingleLineComment && !inMultiLineComment && currentChar == '"' && prevChar != '\\') {
                     inStringLiteral = !inStringLiteral;
 
+                    
                 }
                 
                 
@@ -87,15 +96,19 @@ public class Lexical {
                 } else if (inMultiLineComment) {
                     if (prevChar == '*' && currentChar == '/') {
                         inMultiLineComment = false;
+                        wasMultiLine = true;
                     }
                 } else {
                     if (prevChar == '/' && currentChar == '/') {
                         inSingleLineComment = true;
                     } else if (prevChar == '/' && currentChar == '*') {
                         inMultiLineComment = true;
+
                     } else {
-                        if (prevChar != -1 && !inMultiLineComment  && (char)prevChar != '/') {
-  
+                    	if (wasMultiLine) {
+                    		wasMultiLine = false;
+                    	}
+                    	else if (prevChar != -1 && !inMultiLineComment ) {
                             outputContent.append((char) prevChar);
                         }
                     }
@@ -111,6 +124,10 @@ public class Lexical {
         return outputContent.toString();
     }
 
+    public static String removeSingleLineComments(String input) {
+        String regexPattern = "//.*";
+        return input.replaceAll(regexPattern, "");
+    }
 
     private boolean processIndividualToken(String token) {
 //    	System.out.println(token);
@@ -186,7 +203,7 @@ public class Lexical {
 
     private boolean processDelimiters(String input) {
         String[] delimiters = {"(", ")", "[", "]", ";", ":", ".", ",", "*", "-", "+", "/", "<", "=", ">", "!=",
-                               "<=", ">="};
+                               "<=", ">=", "++", "%"};
         for (String delimiter : delimiters) {
             if (input.equals(delimiter)) {
 //                parser.receiveToken(delimiter); // Pass the delimiter as is
