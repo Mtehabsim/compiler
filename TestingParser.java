@@ -52,7 +52,7 @@ public String getRule(String non,String term)
 //parse
 public void parse    ()
 {
-    push(this.input.charAt(0)+"");//
+    push(this.input.charAt(0)+"");
     push("E");
     //Read one token from input
     String token=read();

@@ -6,6 +6,7 @@ import java.util.Stack;
 
 public class Parser {
     private Stack<String> stack = new Stack<>();
+    private boolean interpreter;
 //    E  -> TE'
 //    E' -> +TE' | -TE' | none
 //    T  -> FT'
@@ -13,14 +14,14 @@ public class Parser {
 //    F  -> ++F | --F | +F | -F | P
 //    P  -> id | (E)
     private List<String> errorMessages = new ArrayList<>();
-
+    private int lineNumber;
     private String[][] table = {
-    	    {"TA", "TA", "TA", "TA", "TA", null, null, null, "TA", null, null},
+    	    {"TA", "TA", "TA", "TA", "TA", null, null, null, "TA", "S", "S"}, // S is synch
     	    {null, "+TA", "-TA", null, null, null, null, null,null, "", ""},
-    	    {"FB", "FB", "FB", "FB", "FB", null, null, null, "FB", null, null},
+    	    {"FB", "FB", "FB", "FB", "FB", null, null, null, "FB", "S", "S"},
     	    {null, "", "", null, null, "*FB", "/FB", "%FB",null, "", ""},
-    	    {"P", "+F", "-F", "++F", "--F", null, null, null, "P", null, null},
-    	    {"i", null, null, null, null, null, null, null, "(E)", null, null}
+    	    {"P", "+F", "-F", "++F", "--F", "S", "S", "S", "P", "S", "S"},
+    	    {"i", "S", "S", null, null, "S", "S", "S", "(E)", "S", "S"}
     	};
     	private String[] nonTerminals = {"E", "A", "T", "B", "F", "P"};
     	private String[] terminals = {"i", "+", "-", "++", "--", "*", "/", "%","(", ")", "$"};
@@ -29,44 +30,53 @@ public class Parser {
     private String currentToken;
     private boolean endOfInputFlag = false;
 
-    public Parser() {
+    public Parser(boolean interpreter) {
+    	this.interpreter = interpreter;
         stack.push("$");
         stack.push("E");
     }
 
-    public void receiveToken(String token) {
+    public void receiveToken(String token, int line) throws Exception {
         currentToken = token;
-        System.out.print("TOKEN is ");
-        System.out.println(token);
+        lineNumber = line;
         processToken();
     }
 
-    public void endOfInput() {
+    public void endOfInput() throws Exception {
         endOfInputFlag = true;
         processToken();
     }
 
-    private void processToken() {
+    private void processToken() throws Exception {
         while (!stack.isEmpty() && (currentToken != null || endOfInputFlag)) {
             String top = stack.peek();
-            System.out.println(top);
             if (isNonTerminal(top)) {
                 String rule = getRule(top, currentToken);
                 if (rule != null) {
                     stack.pop(); // Pop the non-terminal
                     pushRule(rule); // Push the rule onto the stack
                 } else {
-                    error("No rule for non-terminal " + top + " with terminal " + currentToken);
+                	error("Not expected to recieve " + currentToken);
+//                    System.out.println("No rule for non-terminal " + top + " with terminal " + currentToken);
+                    currentToken = null;
+                    continue;
                 }
             } else if (isTerminal(top)) {
                 if (top.equals(currentToken)) {
                     stack.pop(); // Matched terminal
                     currentToken = null; // Reset current token to receive the next one
                 } else {
-                    error("Mismatched terminal. Expected: " + top + ", got: " + currentToken);
+                    error("Character not Expected: " + currentToken);
+                    System.out.println("Rule 3 of recovery mode");
+                    stack.pop(); //rule 3
                 }
-            } else {
+            }else if(top.equals("S")) {
+            	System.out.println("Rule 2 of recovery mode");
+            	stack.pop();
+            }
+            else {
                 error("Unexpected symbol on stack: " + top);
+                
             }
         }
 
@@ -76,8 +86,6 @@ public class Parser {
             System.out.println("Input is not Accepted by LL1");
         }
     }
-
-    // ... (implement isNonTerminal, isTerminal, getRule, pushRule, error, etc.) ...
 
     private boolean isTerminal(String s)
     {
@@ -99,18 +107,19 @@ public class Parser {
     }
 
 
-    private String getRule(String non, String term) {
+    private String getRule(String non, String term) throws Exception {
         int row = getNonTerminalIndex(non);
         int column = getTerminalIndex(term);
         System.out.print(" Index is ");
         System.out.print(row);
-        System.out.println(" ");
-        System.out.print(column);
+        System.out.print(" ");
+        System.out.println(column);
         if (row == -1 || column == -1) {
             return null; // Invalid non-terminal or terminal
         }
 
         String rule = table[row][column];
+        System.out.println(rule);
         if (rule == null) {
             error("No rule for non-terminal " + non + " with terminal " + term);
         }
@@ -136,37 +145,51 @@ public class Parser {
     }
 
     private void pushRule(String rule) {
-        // Splitting the rule into its components.
-        // Assuming that each symbol in the rule is separated by a space.
-    	System.out.print("RULE is ");
-    	System.out.println(rule);
-        
+        int i = rule.length() - 1;
+        while (i >= 0) {
+            String str;
 
-                for(int j=rule.length()-1;j>=0;j--)
-                {
-                  char ch=rule.charAt(j);
-                  String str=String.valueOf(ch);
-                  System.out.print("Pushed to stack ");
-                  System.out.println(str);
-                  stack.push(str);
-                }
-
-    }
-
-
-    private void error(String message) {
-//        System.out.println(message);
-        errorMessages.add(message);
-    }
-    
-    public void reportErrors() {
-        if (errorMessages.isEmpty()) {
-            System.out.println("File Compiled Successfully.");
-        } else {
-            System.out.println("Syntax errors found:");
-            for (String errorMsg : errorMessages) {
-                System.out.println(errorMsg);
+            if (i > 0 && isTwoCharToken(rule.substring(i - 1, i + 1))) { // ++ or -- add to stack as one unit
+                str = rule.substring(i - 1, i + 1);
+                i--; // we checked two so skip
+            } else {
+                str = String.valueOf(rule.charAt(i)); // only one character
             }
+            stack.push(str);
+            i--;
+//          System.out.print("Pushed to stack: ");
+//          System.out.println(str);
         }
     }
+
+    private boolean isTwoCharToken(String token) {
+    	if ("++".equals(token)) {
+            return true;
+        }
+    	if ("--".equals(token)) {
+            return true;
+        }
+        return false;
+    }
+
+
+
+    private void error(String message) throws Exception {
+    	if(interpreter) {
+    		throw new Exception(message + " on line " + lineNumber);
+    	}
+        errorMessages.add(message + " on line " + lineNumber);
+    }
+    
+    public String reportErrors() {
+    	String all = "";
+        
+            System.out.println("Syntax errors found:");
+            for (String errorMsg : errorMessages) {
+                all += errorMsg;
+                all += "\n";
+            }
+            return all;
+        }
+    
 }
